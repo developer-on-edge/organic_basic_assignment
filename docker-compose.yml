@@ -1,0 +1,11 @@
+version: '3'
+services:
+    git_app:
+        build: application
+        ports:
+            - "5000:5000"
+    git_server:
+        build: server
+        ports:
+            - "80:80"
+        depends_on: [git_app]
