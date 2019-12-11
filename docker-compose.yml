@@ -2,8 +2,14 @@ version: '3'
 services:
     git_app:
         build: application
+        volumes: 
+            - ./application/app:/app
         ports:
             - "5000:5000"
+        environment:
+            - GITHUB_USERNAME=developer-on-edge
+            - GITHUB_TOKEN=a9850ff27db309b5018bbcb4747d561468804350
+            - LIMITED_INPUT=TRUE
     git_server:
         build: server
         ports:

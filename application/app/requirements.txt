@@ -1,3 +1,6 @@
-wheel
-uwsgi
+dateutils
 flask
+flask_httpauth 
+requests
+uwsgi
+wheel
