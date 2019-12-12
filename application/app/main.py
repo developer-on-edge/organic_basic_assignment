@@ -1,14 +1,34 @@
 import json
+import logging
 import os
 import re
 
 from flask import abort, Flask, jsonify, request, Response
 from flask_httpauth import HTTPBasicAuth
 from git_connector.git_connector import GithubConnector
+from utilities import get_environment_variable
+from werkzeug.exceptions import HTTPException
 
-app = Flask(__name__)
-auth = HTTPBasicAuth()
-git_conn = GithubConnector()
+
+try:
+    logging.basicConfig(
+        format='%(asctime)s: %(message)s',
+        filename=get_environment_variable('logfile_path'),
+        level=logging.INFO)
+    git_conn = GithubConnector()
+    auth = HTTPBasicAuth()
+    app = Flask(__name__)
+except Exception as e:
+    logging.critical(e, exc_info=True)
+    raise
+    
+
+@app.errorhandler(HTTPException)
+def all_exception_handler(error):
+    logging.error('URL:%s | USER_AGENT:%s' % (request.url, request.user_agent))
+    logging.exception(error)
+    return error
+
 
 @auth.verify_password
 def verify_password(username, password):
@@ -56,7 +76,9 @@ def get_comments_for_repo_for_year(orgname, repo, year):
             'Year parameter was not in the correct format, expected: YYYY, got %s' % year,
             status=400))
     year_int = int(year)
-    return jsonify(git_conn.get_repo_comments_for_year(orgname, repo, year_int))
+    result = jsonify(git_conn.get_repo_comments_for_year(orgname, repo, year_int))
+    print(result)
+    return result
 
 
 @app.route("/<orgname>/<repo>/languages")
@@ -69,7 +91,3 @@ def get_languages_for_repo(orgname, repo):
 @auth.login_required
 def get_most_resent_repo(orgname, limit):
     return jsonify([entry for entry in git_conn.get_latest_repos(orgname, limit)])
-
-
-if __name__ == "__main__":
-    app.run(host='0.0.0.0')

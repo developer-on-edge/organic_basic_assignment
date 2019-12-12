@@ -1,27 +1,16 @@
 import logging
-import os
-import pprint
 import requests
 
 from dateutil.parser import parse as date_parser
 from datetime import datetime, timezone
+from utilities import convert_year_to_start_and_end_time, get_environment_variable
 
 
 class GithubConnector:
 
     def __init__(self):
-        self.username = self.get_environment_variable('github_username')
-        self.token = self.get_environment_variable('github_token')
-
-
-    def get_environment_variable(self, variable_name, ignore_key_error=False):
-        upper_variable_name = variable_name.upper()
-        if upper_variable_name not in os.environ:
-            #TODO logging
-            if ignore_key_error:
-                return
-            raise KeyError('Variable %s not in environment.' % upper_variable_name)
-        return os.environ[upper_variable_name]
+        self.username = get_environment_variable('github_username')
+        self.token = get_environment_variable('github_token')
 
 
     def send_request(self, url):
@@ -31,9 +20,9 @@ class GithubConnector:
             auth=(self.username, self.token)
         )
         if response.status_code != 200:
-            #TODO do logging
-            print(response.headers)
-            print(response.text)
+            
+            logging.error(response.headers)
+            logging.error(response.text)
             response.raise_for_status()
         return response
 
@@ -84,7 +73,7 @@ class GithubConnector:
 
 
     def get_repo_comments_for_year(self, github_orgname, github_repo, year):
-        start_time, end_time = conn.convert_year_to_start_and_end_time(year)
+        start_time, end_time = convert_year_to_start_and_end_time(year)
         return [{
             'created_at': entry['created_at'],
             'user_login': entry['user']['login'],
@@ -103,46 +92,3 @@ class GithubConnector:
         repos = self.get_github_repos_for_org('shopify')
         for repo in sorted(repos, key=lambda x: date_parser(x['created_at']), reverse=True)[:limit]:
             yield {'name': repo['name'], 'html_url': repo['html_url']}
-
-    
-    def convert_year_to_start_and_end_time(self, year):
-        return (
-            datetime(year, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
-            datetime(year, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
-        )
-
-
-conn = GithubConnector()
-pp = pprint.PrettyPrinter(indent=4)
-
-github_orgname = 'shopify'
-
-
-def assigment_a():
-    # The body, author username and date of all commit comments from 2017 in Shopify's repository list
-    start_time, end_time = conn.convert_year_to_start_and_end_time(2017)
-    comments = conn.get_org_repo_comments_for_period(github_orgname, start_time, end_time)
-    return [{'created_at': entry['created_at'], 'user_login': entry['user']['login'],'body': entry['body']} for entry in comments]
-
-
-def assigment_b():
-    # A list of all programming languages in Shopify's repository list
-    repos = conn.get_github_repos_for_org(github_orgname)
-    languages = set()
-    for repo in repos:
-        languages.update(conn.get_repo_languages(github_orgname, repo['name']))
-    return languages
-
-
-def assigment_c():
-    # The names and URLs of the 50 most recent repositories in Shopify's repository list
-    return [entry for entry in conn.get_latest_repos(github_orgname, limit=50)]
-
-
-if __name__ == '__main__':
-    print('######## ASSIGNMENT A #########')
-    pp.pprint(assigment_a())
-    print('######## ASSIGNMENT B #########')
-    pp.pprint(assigment_b())
-    print('######## ASSIGNMENT C #########')
-    pp.pprint(assigment_c())
